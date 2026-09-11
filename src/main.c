@@ -65,7 +65,7 @@ int main ()
 		// Render the current frame.
 	
 	BeginDrawing();
-
+	DrawRectangle(100, 100, 50, 50, RED);
 	ClearBackground(backgroundColor);
 	EndDrawing();
 
