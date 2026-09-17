@@ -20,7 +20,7 @@ by Jeffery Myers is marked with CC0 1.0. To view a copy of this license, visit h
 
 // ==================== COLOUR PALETTE ====================
 
-Color backgroundColor = { 220, 229, 209, 255 };
+Color backgroundColor = { 138, 124, 96, 255 };
 
 
 // ==================== VARIABLES ====================
@@ -30,6 +30,12 @@ const int windowWidth = 1290;
 const int windowHeight = 720;
 
 Camera2D camera = { 0 };
+
+Texture2D dogLeftTexture;
+Texture2D dogRightTexture;
+Texture2D dogTexture;
+
+Texture2D sheepTexture;
 
 
 // ==================== PLAYER ====================
@@ -42,6 +48,8 @@ typedef struct
 	Vector2 velocity;
 
 	float speed;
+
+	bool facingRight;
 
 	Rectangle hitbox;
 
@@ -238,11 +246,19 @@ void InitialisePlayer(Player* p)
 		return;
 	}
 
+	dogLeftTexture = LoadTexture("dog-Left.png");
+	dogRightTexture = LoadTexture("dog-Right.png");
+
+	// Starting texture
+	dogTexture = dogRightTexture;
+
 	p->position = (Vector2){ 600.0f, 350.0f };
-	p->size = (Vector2){ 40.0f, 40.0f };
+	p->size = (Vector2){ 80.0f, 75.0f };
 	p->velocity = (Vector2){ 0.0f, 0.0f };
 
 	p->speed = 250.0f;
+
+	p->facingRight = true;
 
 	p->hitbox = (Rectangle)
 	{
@@ -304,6 +320,8 @@ void InitialiseGame()
 		sheep[i].hitbox.y = sheep[i].position.y;
 	
 	}
+
+	
 }
 
 
@@ -320,6 +338,9 @@ void HandleInput(Player* p, float dt)
 
 	Vector2 oldPos = p->position;
 
+	
+
+
 	// Vertical movement
 	if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))
 	{
@@ -335,11 +356,14 @@ void HandleInput(Player* p, float dt)
 	if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))
 	{
 		force.x -= 1.0f;
+		dogTexture = dogLeftTexture;
+
 	}
 
 	if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT))
 	{
 		force.x += 1.0f;
+		dogTexture = dogRightTexture;
 	}
 
 	// Normalise movement so diagonal movement is not faster
@@ -374,6 +398,14 @@ void HandleInput(Player* p, float dt)
 	}
 }
 
+
+
+
+
+
+
+
+
 // ==================== DRAWING ====================
 
 void DrawSheep(Sheep* s)
@@ -399,11 +431,13 @@ void DrawPlayer(Player* p)
 		return;
 	}
 
-	DrawRectangleV(
-		p->position,
-		p->size,
-		p->colour
+	DrawTextureEx(
+		dogTexture,
+		p->position, 0,
+		0.3,
+		WHITE
 	);
+	
 }
 
 
@@ -477,7 +511,6 @@ int main ()
 		//Make sure the frames run at the same speed for every computer
 		float dt = GetFrameTime();
 
-		
 
 		HandleInput(&player, dt);
 
