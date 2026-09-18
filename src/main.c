@@ -20,14 +20,14 @@ by Jeffery Myers is marked with CC0 1.0. To view a copy of this license, visit h
 
 // ==================== COLOUR PALETTE ====================
 
-Color backgroundColor = { 138, 124, 96, 255 };
+Color backgroundColor = { 163, 194, 85, 255 };
 
 
 // ==================== VARIABLES ====================
 
 
-const int windowWidth = 1290;
-const int windowHeight = 720;
+const int windowWidth = 1800;
+const int windowHeight = 900;
 
 Camera2D camera = { 0 };
 
@@ -35,8 +35,24 @@ Texture2D dogLeftTexture;
 Texture2D dogRightTexture;
 Texture2D dogTexture;
 
+Texture2D sheep1Left;
+Texture2D sheep1Right;
+
+Texture2D sheep2Left;
+Texture2D sheep2Right;
+
 Texture2D sheepTexture;
 
+Texture2D GrassTexture1;
+Texture2D GrassTexture2;
+
+Vector2 grass1Pos = { -100,-200 };
+Vector2 grass2Pos = { 800,-200 };
+
+Rectangle topFence;
+Rectangle bottomFence;
+Rectangle leftFence;
+Rectangle rightFence;
 
 // ==================== PLAYER ====================
 
@@ -86,10 +102,15 @@ typedef struct
 	float Spook_radius;
 
 	float Separation_radius;
-	
+
+	Vector2 wanderDirection;
+	float wanderTimer;
+	float wanderInterval;
 
 	SheepState currentState;
 
+
+	int textureVariation;
 	Color colour;
 
 } Sheep;
@@ -158,24 +179,61 @@ void UpdateSheep(Sheep* s, Sheep sheep[], Player* p, float dt)
 		return;
 	}
 
+	Vector2 oldPos = s->position;
+
+
 	// Distance from sheep to player
 	Vector2 difference = Vector2Subtract(s->position, p->position);
 	float distance = Vector2Length(difference);
 
-	
-
 	Vector2 separation = CalculateSeparation(s, sheep);
 
 	
-
-
 	switch (s->currentState)
 	{
 		case SHEEP_CALM:
 		{
 			s->colour = LIGHTGRAY;
 
-			// wander code
+			//random walk
+			s->wanderTimer += dt;
+
+			if (s->wanderTimer >= s->wanderInterval) 
+			{
+				int choice = GetRandomValue(0, 3);
+
+				if (choice == 0)
+				{
+					s->wanderDirection = (Vector2){ 1.0f, 0.0f };
+				}
+				else if (choice == 1)
+				{
+					s->wanderDirection = (Vector2){ -1.0f, 0.0f };
+				}
+				else if (choice == 2)
+				{
+					s->wanderDirection = (Vector2){ 0.0f, 1.0f };
+				}
+				else
+				{
+					s->wanderDirection = (Vector2){ 0.0f, -1.0f };
+				}
+
+				s->wanderTimer = 0.0f;
+				s->wanderInterval = GetRandomValue(1, 4);
+			}
+
+			float wanderSpeed = s->speed * 0.25f;
+
+			s->velocity = Vector2Scale(s->wanderDirection, wanderSpeed);
+			
+			// Separation
+			float separationWeight = 100.0f;
+			s->velocity.x += separation.x * separationWeight;
+			s->velocity.y += separation.y * separationWeight;
+
+
+
 			if (distance < s->Spook_radius)
 			{
 				s->currentState = SHEEP_FLEEING;
@@ -190,7 +248,6 @@ void UpdateSheep(Sheep* s, Sheep sheep[], Player* p, float dt)
 
 
 			//Flee
-
 			Vector2 desiredvelocity = Vector2Subtract(s->position, p->position);
 
 			desiredvelocity = Vector2Normalize(desiredvelocity);
@@ -203,20 +260,13 @@ void UpdateSheep(Sheep* s, Sheep sheep[], Player* p, float dt)
 
 
 			// Separation
-
 			float separationWeight = 100.0f;
 
 			s->velocity.x += separation.x * separationWeight;
 			s->velocity.y += separation.y * separationWeight;
 
 
-			//Move
-			s->position.x += s->velocity.x * dt;
-			s->position.y += s->velocity.y * dt;
-
-			//Keep sheep hitbox with sheep
-			s->hitbox.x = s->position.x;
-			s->hitbox.y = s->position.y;
+			
 
 			//Switch States
 			if (distance > s->Flee_radius)
@@ -228,9 +278,25 @@ void UpdateSheep(Sheep* s, Sheep sheep[], Player* p, float dt)
 		}
 	}
 
+	//Move
+	s->position.x += s->velocity.x * dt;
+	s->position.y += s->velocity.y * dt;
 
+	//Keep sheep hitbox with sheep
+	s->hitbox.x = s->position.x;
+	s->hitbox.y = s->position.y;
 
+	//fence collisions
+	if (CheckCollisionRecs(s->hitbox, topFence) ||
+		CheckCollisionRecs(s->hitbox, bottomFence) ||
+		CheckCollisionRecs(s->hitbox, leftFence) ||
+		CheckCollisionRecs(s->hitbox, rightFence))
+	{
+		s->position = oldPos;
 
+		s->hitbox.x = s->position.x;
+		s->hitbox.y = s->position.y;
+	}
 }
 
 
@@ -252,8 +318,8 @@ void InitialisePlayer(Player* p)
 	// Starting texture
 	dogTexture = dogRightTexture;
 
-	p->position = (Vector2){ 600.0f, 350.0f };
-	p->size = (Vector2){ 80.0f, 75.0f };
+	p->position = (Vector2){ 300.0f, 350.0f };
+	p->size = (Vector2){ 90.0f, 75.0f };
 	p->velocity = (Vector2){ 0.0f, 0.0f };
 
 	p->speed = 250.0f;
@@ -280,8 +346,18 @@ void InitialiseSheep(Sheep* s)
 		return;
 	}
 
-	s->position = (Vector2){ 850.0f, 350.0f };
-	s->size = (Vector2){ 40.0f, 40.0f };
+
+
+	sheep1Left = LoadTexture("sheep_1_Left.png");
+	sheep1Right = LoadTexture("sheep_1_Right.png");
+
+	sheep2Left = LoadTexture("sheep_2_Left.png");
+	sheep2Right = LoadTexture("sheep_2_Right.png");
+
+	s->textureVariation = GetRandomValue(0, 1);
+
+	s->position = (Vector2){ 700.0f, 350.0f };
+	s->size = (Vector2){ 90.0f, 80.0f };
 	s->velocity = (Vector2){ 0.0f, 0.0f };
 
 	s->speed = 180.0f;
@@ -290,8 +366,11 @@ void InitialiseSheep(Sheep* s)
 	s->Spook_radius = 150;
 
 	s->Separation_radius = 100.f;
-	
 
+	s->wanderDirection = (Vector2){ 0.0f, 0.0f };
+	s->wanderTimer = GetRandomValue(0, 3);
+	s->wanderInterval = GetRandomValue(1, 4);
+	
 	s->currentState = SHEEP_CALM;
 
 	s->hitbox = (Rectangle)
@@ -309,6 +388,16 @@ void InitialiseSheep(Sheep* s)
 
 void InitialiseGame()
 {
+	//background
+	GrassTexture1 = LoadTexture("grass_1.png");
+	GrassTexture2 = LoadTexture("grass_2.png");
+
+	topFence = (Rectangle){ -100, -145, 1800, 30 };
+	bottomFence = (Rectangle){ -100, 620, 1800, 30 };
+
+	leftFence = (Rectangle){ -75, -200, 30, 900 };
+	rightFence = (Rectangle){ 1645, -200, 30, 900 };
+
 	InitialisePlayer(&player);
 	for (int i = 0; i < Sheep_Count; i++)
 	{
@@ -318,10 +407,7 @@ void InitialiseGame()
 		
 		sheep[i].hitbox.x = sheep[i].position.x;
 		sheep[i].hitbox.y = sheep[i].position.y;
-	
 	}
-
-	
 }
 
 
@@ -396,6 +482,18 @@ void HandleInput(Player* p, float dt)
 			p->hitbox.y = oldPos.y;
 		}
 	}
+
+	//fence collisions
+	if (CheckCollisionRecs(p->hitbox, topFence) ||
+		CheckCollisionRecs(p->hitbox, bottomFence) ||
+		CheckCollisionRecs(p->hitbox, leftFence) ||
+		CheckCollisionRecs(p->hitbox, rightFence))
+	{
+		p->position = oldPos;
+
+		p->hitbox.x = p->position.x;
+		p->hitbox.y = p->position.y;
+	}
 }
 
 
@@ -415,10 +513,25 @@ void DrawSheep(Sheep* s)
 		return;
 	}
 
-	DrawRectangleV(
+	if (s->textureVariation == 0)
+	{
+		if (s->velocity.x < 0)
+			sheepTexture = sheep1Left;
+		else
+			sheepTexture = sheep1Right;
+	}
+	else
+	{
+		if (s->velocity.x < 0)
+			sheepTexture = sheep2Left;
+		else
+			sheepTexture = sheep2Right;
+	}
+	DrawTextureEx(
+		sheepTexture,
 		s->position,
-		s->size,
-		s->colour
+		0, 0.3,
+		WHITE
 	);
 }
 
@@ -448,7 +561,18 @@ void DrawGame()
 
 	BeginMode2D(camera);
 
-	ClearBackground(backgroundColor);
+	//ClearBackground(backgroundColor);
+	ClearBackground(RED);
+
+
+	//background
+	DrawTextureEx(GrassTexture1, grass1Pos, 0, 1, WHITE);
+	DrawTextureEx(GrassTexture2, grass2Pos, 0, 1, WHITE);
+
+	DrawRectangleLinesEx(topFence, 2.0f, RED);
+	DrawRectangleLinesEx(bottomFence, 2.0f, RED);
+	DrawRectangleLinesEx(leftFence, 2.0f, RED);
+	DrawRectangleLinesEx(rightFence, 2.0f, RED);
 
 	DrawPlayer(&player);
 
@@ -457,16 +581,19 @@ void DrawGame()
 		DrawSheep(&sheep[i]);
 	}
 
+	
+
 	// Debug hitboxes
-	DrawRectangleLinesEx(player.hitbox, 2.0f, RED);
+	//DrawRectangleLinesEx(player.hitbox, 2.0f, RED);
 
 	for (int i = 0; i < Sheep_Count; i++)
 	{
-		DrawRectangleLinesEx(sheep[i].hitbox, 2.0f, BLUE);
+	//	DrawRectangleLinesEx(sheep[i].hitbox, 2.0f, BLUE);
 	}
 	
 
-	DrawText("Sheep Herding AI", 20, 20, 20, DARKGRAY);
+
+	//DrawText("Sheep Herding AI", player.position.x - 100, player.position.y - 400, 20, DARKGRAY);
 
 	EndMode2D();
 
@@ -504,7 +631,7 @@ int main ()
 	camera.offset = (Vector2){ (float)windowWidth / 2, (float)windowHeight / 2 , };
 	camera.rotation = 0.f;
 	camera.zoom = 1.f;
-	camera.target = (Vector2){ player.position.x, player.position.y - 100 };
+	camera.target = (Vector2){ player.position.x + 500, player.position.y - 100 };
 
 	while (!WindowShouldClose())		// run the loop until the user presses ESCAPE or presses the Close button on the window
 	{
