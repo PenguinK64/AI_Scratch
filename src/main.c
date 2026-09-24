@@ -54,6 +54,15 @@ Rectangle bottomFence;
 Rectangle leftFence;
 Rectangle rightFence;
 
+Texture2D WinFenceTexture;
+
+Rectangle WinFenceRight;
+Rectangle WinFenceBottom;
+
+Rectangle WinHitbox;
+
+float TotalHerdedSheep = 0;
+
 // ==================== PLAYER ====================
 
 
@@ -109,6 +118,7 @@ typedef struct
 
 	SheepState currentState;
 
+	bool sheepherded;
 
 	int textureVariation;
 	Color colour;
@@ -290,13 +300,39 @@ void UpdateSheep(Sheep* s, Sheep sheep[], Player* p, float dt)
 	if (CheckCollisionRecs(s->hitbox, topFence) ||
 		CheckCollisionRecs(s->hitbox, bottomFence) ||
 		CheckCollisionRecs(s->hitbox, leftFence) ||
-		CheckCollisionRecs(s->hitbox, rightFence))
+		 CheckCollisionRecs(s->hitbox, rightFence) ||
+		CheckCollisionRecs(s->hitbox, WinFenceRight) ||
+		CheckCollisionRecs(s->hitbox, WinFenceBottom))
 	{
 		s->position = oldPos;
 
 		s->hitbox.x = s->position.x;
 		s->hitbox.y = s->position.y;
 	}
+
+	if (CheckCollisionRecs(s->hitbox, WinHitbox))
+	{
+		printf("%f\n", TotalHerdedSheep);
+		printf("sheep herded successfully");
+		s->sheepherded = true;
+		
+	}
+	else
+	{
+		s->sheepherded = false;
+	}
+
+	
+	if (s->sheepherded)
+	{
+		TotalHerdedSheep + 1;
+	}
+	else
+	{
+		TotalHerdedSheep - 1;
+	}
+	
+
 }
 
 
@@ -367,6 +403,8 @@ void InitialiseSheep(Sheep* s)
 
 	s->Separation_radius = 100.f;
 
+	s->sheepherded = false;
+
 	s->wanderDirection = (Vector2){ 0.0f, 0.0f };
 	s->wanderTimer = GetRandomValue(0, 3);
 	s->wanderInterval = GetRandomValue(1, 4);
@@ -391,6 +429,13 @@ void InitialiseGame()
 	//background
 	GrassTexture1 = LoadTexture("grass_1.png");
 	GrassTexture2 = LoadTexture("grass_2.png");
+
+	WinFenceTexture = LoadTexture("Win_fences.png");
+
+	WinFenceRight = (Rectangle){ 90, 140, 190, 60 };
+	WinFenceBottom = (Rectangle){ 250, -200, 30, 400 };
+
+	WinHitbox = (Rectangle){ -50, -145, 300, 300 };
 
 	topFence = (Rectangle){ -100, -145, 1800, 30 };
 	bottomFence = (Rectangle){ -100, 620, 1800, 30 };
@@ -487,7 +532,9 @@ void HandleInput(Player* p, float dt)
 	if (CheckCollisionRecs(p->hitbox, topFence) ||
 		CheckCollisionRecs(p->hitbox, bottomFence) ||
 		CheckCollisionRecs(p->hitbox, leftFence) ||
-		CheckCollisionRecs(p->hitbox, rightFence))
+		CheckCollisionRecs(p->hitbox, rightFence) ||
+		CheckCollisionRecs(p->hitbox, WinFenceRight) ||
+		CheckCollisionRecs(p->hitbox, WinFenceBottom))
 	{
 		p->position = oldPos;
 
@@ -568,11 +615,13 @@ void DrawGame()
 	//background
 	DrawTextureEx(GrassTexture1, grass1Pos, 0, 1, WHITE);
 	DrawTextureEx(GrassTexture2, grass2Pos, 0, 1, WHITE);
+	DrawTextureEx(WinFenceTexture, grass1Pos, 0, 1, WHITE);
+	
 
-	DrawRectangleLinesEx(topFence, 2.0f, RED);
-	DrawRectangleLinesEx(bottomFence, 2.0f, RED);
-	DrawRectangleLinesEx(leftFence, 2.0f, RED);
-	DrawRectangleLinesEx(rightFence, 2.0f, RED);
+	DrawRectangleLinesEx(WinFenceBottom, 2.0f, RED);
+	DrawRectangleLinesEx(WinFenceRight, 2.0f, RED);
+	DrawRectangleLinesEx(WinHitbox, 2.0f, RED);
+//	DrawRectangleLinesEx(rightFence, 2.0f, RED);
 
 	DrawPlayer(&player);
 
@@ -648,7 +697,12 @@ int main ()
 
 		DrawGame();
 
+		//if (HerdedSheep = Sheep_Count)
+		{
+		//	printf("you won!");
+		}
 
+		printf("%f\n", TotalHerdedSheep);
 	}
 	// Release loaded resources and close the window.
 	
