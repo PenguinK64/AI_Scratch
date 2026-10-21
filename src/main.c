@@ -21,7 +21,7 @@ by Jeffery Myers is marked with CC0 1.0. To view a copy of this license, visit h
 // ==================== COLOUR PALETTE ====================
 
 Color backgroundColor = { 163, 194, 85, 255 };
-
+Color textColor = { 47, 59, 46, 255 };
 
 // ==================== VARIABLES ====================
 
@@ -64,8 +64,6 @@ Rectangle WinHitbox;
 int TotalHerdedSheep = 0;
 
 bool gameWon = false;
-
-Color textColor = { 47, 59, 46, 255 };
 
 
 typedef enum GameState {
@@ -522,7 +520,6 @@ void InitialiseSheep(Sheep* s)
 	}
 
 
-
 	sheep1Left = LoadTexture("sheep_1_Left.png");
 	sheep1Right = LoadTexture("sheep_1_Right.png");
 
@@ -645,8 +642,6 @@ void HandleInput(Player* p, float dt)
 
 	Vector2 oldPos = p->position;
 
-	
-
 
 	// Vertical movement
 	if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))
@@ -740,10 +735,8 @@ void DrawGameUI()
 
 		if (!gameWon)
 		{
-
 			DrawRectangle(1350, -170, 300, 50, WHITE);
 			DrawText(TextFormat("Sheep Herded: %d", TotalHerdedSheep), 1360, -160, 30, textColor);
-
 
 		}
 
@@ -778,7 +771,6 @@ void GameStateMachine(float dt)
 
 			break;
 	case GAME_RUNNING:
-		//win condition
 
 		HandleInput(&player, dt);
 
@@ -813,8 +805,6 @@ void GameStateMachine(float dt)
 
 		break;
 
-
-
 	case GAME_WIN:
 		if (IsKeyPressed(KEY_ENTER))
 		{
@@ -832,16 +822,6 @@ void GameStateMachine(float dt)
 		}
 	}
 }
-
-
-
-
-
-
-
-
-
-
 
 
 // ==================== DRAWING ====================
@@ -876,7 +856,6 @@ void DrawSheep(Sheep* s)
 }
 
 
-
 void DrawPlayer(Player* p)
 {
 	if (!p)
@@ -892,7 +871,6 @@ void DrawPlayer(Player* p)
 	);
 	
 }
-
 
 
 void DrawGame()
@@ -916,28 +894,13 @@ void DrawGame()
 	{
 		DrawSheep(&sheep[i]);
 	}
-
-	
-
-	// Debug hitboxes
-	//DrawRectangleLinesEx(player.hitbox, 2.0f, RED);
-
-	for (int i = 0; i < Sheep_Count; i++)
-	{
-	//	DrawRectangleLinesEx(sheep[i].hitbox, 2.0f, BLUE);
-	}
 	
 	DrawGameUI();
-
-	//DrawText("Sheep Herding AI", player.position.x - 100, player.position.y - 400, 20, DARKGRAY);
 
 	EndMode2D();
 
 	EndDrawing();
 }
-
-
-
 
 
 // ==================== MAIN ====================
@@ -960,7 +923,6 @@ int main ()
 	
 	InitialiseGame();
 
-
 	camera.target = (Vector2){ 0,0 };
 	camera.offset = (Vector2){ (float)windowWidth / 2, (float)windowHeight / 2 , };
 	camera.rotation = 0.f;
@@ -974,21 +936,8 @@ int main ()
 
 		GameStateMachine(dt);
 
-		//HandleInput(&player, dt);
-
-		
-		
-
-		printf("Sheep herded: %d/%d\n", TotalHerdedSheep, Sheep_Count);
-
 		DrawGame();
 
-		//if (HerdedSheep = Sheep_Count)
-		{
-		//	printf("you won!");
-		}
-
-		//printf("%f\n", TotalHerdedSheep);
 	}
 	// Release loaded resources and close the window.
 	
