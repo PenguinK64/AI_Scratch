@@ -4,7 +4,7 @@ A 2D sheep-herding game built from scratch in C using Raylib, focused on artific
 
 Originally developed as a university project for *Games Programming: AI and Physics*, the project involved implementing AI behaviours and a finite state machine to create autonomous sheep that react to the player and their surroundings.
 
-<img width="1290" height="600" alt="GIF of Sheep Herding AI gameplay" src="https://github.com/user-attachments/assets/78e835d6-7717-4480-9a5a-2dd7fa466ae1"/>
+<img width="1290" height="600" alt="GIF of Sheep Herding AI gameplay" src=https://github.com/user-attachments/assets/2e9f9d58-56f7-47a1-96f2-1b30200bdd5a/>
 
 ## About
 
