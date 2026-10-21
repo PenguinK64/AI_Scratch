@@ -27,7 +27,7 @@ Color backgroundColor = { 163, 194, 85, 255 };
 
 
 const int windowWidth = 1800;
-const int windowHeight = 900;
+const int windowHeight = 900 ;
 
 Camera2D camera = { 0 };
 
@@ -61,7 +61,22 @@ Rectangle WinFenceBottom;
 
 Rectangle WinHitbox;
 
-float TotalHerdedSheep = 0;
+int TotalHerdedSheep = 0;
+
+bool gameWon = false;
+
+Color textColor = { 47, 59, 46, 255 };
+
+
+typedef enum GameState {
+	GAME_START,
+	GAME_RUNNING,
+	GAME_PAUSED,
+	GAME_WIN,
+	GAME_LOSE
+} GameState;
+
+GameState g_currentGameState = GAME_START;
 
 // ==================== PLAYER ====================
 
@@ -288,54 +303,66 @@ void UpdateSheep(Sheep* s, Sheep sheep[], Player* p, float dt)
 		}
 	}
 
-	//Move
+	// Move horizontally
 	s->position.x += s->velocity.x * dt;
-	s->position.y += s->velocity.y * dt;
-
-	//Keep sheep hitbox with sheep
 	s->hitbox.x = s->position.x;
-	s->hitbox.y = s->position.y;
 
-	//fence collisions
+	// Check horizontal fence collision
 	if (CheckCollisionRecs(s->hitbox, topFence) ||
 		CheckCollisionRecs(s->hitbox, bottomFence) ||
 		CheckCollisionRecs(s->hitbox, leftFence) ||
-		 CheckCollisionRecs(s->hitbox, rightFence) ||
+		CheckCollisionRecs(s->hitbox, rightFence) ||
 		CheckCollisionRecs(s->hitbox, WinFenceRight) ||
 		CheckCollisionRecs(s->hitbox, WinFenceBottom))
 	{
-		s->position = oldPos;
-
-		s->hitbox.x = s->position.x;
-		s->hitbox.y = s->position.y;
+		s->position.x = oldPos.x;
+		s->hitbox.x = oldPos.x;
+		s->velocity.x = 0;
 	}
 
-	if (CheckCollisionRecs(s->hitbox, WinHitbox))
+
+	// Move vertically
+	s->position.y += s->velocity.y * dt;
+	s->hitbox.y = s->position.y;
+
+	// Check vertical fence collision
+	if (CheckCollisionRecs(s->hitbox, topFence) ||
+		CheckCollisionRecs(s->hitbox, bottomFence) ||
+		CheckCollisionRecs(s->hitbox, leftFence) ||
+		CheckCollisionRecs(s->hitbox, rightFence) ||
+		CheckCollisionRecs(s->hitbox, WinFenceRight) ||
+		CheckCollisionRecs(s->hitbox, WinFenceBottom))
 	{
-		printf("%f\n", TotalHerdedSheep);
-		printf("sheep herded successfully");
-		s->sheepherded = true;
-		
-	}
-	else
-	{
-		s->sheepherded = false;
+		s->position.y = oldPos.y;
+		s->hitbox.y = oldPos.y;
+		s->velocity.y = 0;
 	}
 
 	
-	if (s->sheepherded)
-	{
-		TotalHerdedSheep + 1;
-	}
-	else
-	{
-		TotalHerdedSheep - 1;
-	}
+	
+	s->sheepherded = CheckCollisionRecs(s->hitbox, WinHitbox);
+		
 	
 
 }
 
+void UpdateWinCondition()
+{
+	TotalHerdedSheep = 0;
 
+	for (int i = 0; i < Sheep_Count; i++)
+	{
+		if (sheep[i].sheepherded)
+		{
+			TotalHerdedSheep++;
+		}
+	}
+
+	if (TotalHerdedSheep == Sheep_Count)
+	{
+		gameWon = true;
+	}
+}
 
 
 
@@ -422,6 +449,38 @@ void InitialiseSheep(Sheep* s)
 	s->colour = LIGHTGRAY;
 
 }
+
+void ResetGame()
+{
+	// Reset player
+	player.position = (Vector2){ 300.0f, 350.0f };
+	player.velocity = (Vector2){ 0.0f, 0.0f };
+
+	player.hitbox.x = player.position.x;
+	player.hitbox.y = player.position.y;
+
+	// Reset sheep
+	for (int i = 0; i < Sheep_Count; i++)
+	{
+		sheep[i].position = (Vector2){ 700.0f + i * 100.0f, 350.0f };
+		sheep[i].velocity = (Vector2){ 0.0f, 0.0f };
+
+		sheep[i].hitbox.x = sheep[i].position.x;
+		sheep[i].hitbox.y = sheep[i].position.y;
+
+		sheep[i].currentState = SHEEP_CALM;
+		sheep[i].sheepherded = false;
+
+		sheep[i].wanderDirection = (Vector2){ 0.0f, 0.0f };
+		sheep[i].wanderTimer = GetRandomValue(0, 3);
+		sheep[i].wanderInterval = GetRandomValue(1, 4);
+	}
+
+	// Reset win condition
+	TotalHerdedSheep = 0;
+	gameWon = false;
+}
+
 
 
 void InitialiseGame()
@@ -544,6 +603,123 @@ void HandleInput(Player* p, float dt)
 }
 
 
+// ==================== UI / Game STATE ====================
+
+void DrawGameUI()
+{
+	// return state
+	switch (g_currentGameState) {
+	case GAME_START:
+		DrawRectangle(-100, -200, 3000, 1500, backgroundColor);
+		
+		DrawText("Sheep Herding Ai", 500, 100, 50, textColor);
+		DrawText("Press Enter to Start", 500, 200, 30, textColor);
+		DrawText("CONTROLS : Arrows / WASD: Move", 500, 300, 20, textColor);
+		DrawText("OBJECTIVE : Get all the sheep inside the top left Pen!", 500, 400, 20, textColor);
+
+
+		break;
+	case GAME_RUNNING:
+
+		if (!gameWon)
+		{
+
+			DrawRectangle(1350, -170, 300, 50, WHITE);
+			DrawText(TextFormat("Sheep Herded: %d", TotalHerdedSheep), 1360, -160, 30, textColor);
+
+
+		}
+
+		break;
+	case GAME_PAUSED:
+		DrawRectangle(-100, -200, 3000, 1500, backgroundColor);
+		DrawText("Game Paused!", 500, 100, 50, textColor);
+		DrawText("Press Enter to continue \nor E to go to Menu", 500, 200, 30, textColor);
+
+
+
+		break;
+	case GAME_WIN:
+		DrawRectangle(-100, -200, 3000, 1500, backgroundColor);
+		DrawText("YOU WON!\nPress Enter to Restart", 500, 200, 30, textColor);
+		break;
+
+	case GAME_LOSE:
+		DrawText("        You Lose!\nPress Enter to Restart", player.position.x - 200, player.position.y - 200, 20, textColor);
+		break;
+	}
+}
+
+void GameStateMachine(float dt)
+{
+	switch (g_currentGameState)
+	{
+	case GAME_START:
+
+		if (IsKeyPressed(KEY_ENTER)) {
+			g_currentGameState = GAME_RUNNING;
+
+			break;
+	case GAME_RUNNING:
+		//win condition
+
+		HandleInput(&player, dt);
+
+		for (int i = 0; i < Sheep_Count; i++)
+		{
+			UpdateSheep(&sheep[i], sheep, &player, dt);
+		}
+
+		UpdateWinCondition();
+
+		if (gameWon)
+		{
+			g_currentGameState = GAME_WIN;
+			//PlaySound(WinSound);
+		}
+
+		if (IsKeyPressed(KEY_P))
+		{
+			g_currentGameState = GAME_PAUSED;
+
+		}
+		break;
+
+	case GAME_PAUSED:
+		if (IsKeyPressed(KEY_ENTER)) {
+			g_currentGameState = GAME_RUNNING;
+		}
+
+		if (IsKeyPressed(KEY_E)) {
+			g_currentGameState = GAME_START;
+		}
+
+		break;
+
+
+
+	case GAME_WIN:
+		if (IsKeyPressed(KEY_ENTER))
+		{
+			ResetGame();
+			g_currentGameState = GAME_START;
+		}
+		break;
+	case GAME_LOSE:
+
+		if (IsKeyPressed(KEY_ENTER)) {
+
+			g_currentGameState = GAME_START;
+		}
+		break;
+		}
+	}
+}
+
+
+
+
+
 
 
 
@@ -603,7 +779,7 @@ void DrawPlayer(Player* p)
 
 
 void DrawGame()
-{
+{ 
 	BeginDrawing();
 
 	BeginMode2D(camera);
@@ -618,9 +794,10 @@ void DrawGame()
 	DrawTextureEx(WinFenceTexture, grass1Pos, 0, 1, WHITE);
 	
 
-	DrawRectangleLinesEx(WinFenceBottom, 2.0f, RED);
-	DrawRectangleLinesEx(WinFenceRight, 2.0f, RED);
-	DrawRectangleLinesEx(WinHitbox, 2.0f, RED);
+//	DrawRectangleLinesEx(WinFenceBottom, 2.0f, RED);
+	//DrawRectangleLinesEx(WinFenceRight, 2.0f, RED);
+	//DrawRectangleLinesEx(WinHitbox, 2.0f, RED);
+
 //	DrawRectangleLinesEx(rightFence, 2.0f, RED);
 
 	DrawPlayer(&player);
@@ -640,7 +817,7 @@ void DrawGame()
 	//	DrawRectangleLinesEx(sheep[i].hitbox, 2.0f, BLUE);
 	}
 	
-
+	DrawGameUI();
 
 	//DrawText("Sheep Herding AI", player.position.x - 100, player.position.y - 400, 20, DARKGRAY);
 
@@ -648,8 +825,6 @@ void DrawGame()
 
 	EndDrawing();
 }
-
-
 
 
 
@@ -687,13 +862,14 @@ int main ()
 		//Make sure the frames run at the same speed for every computer
 		float dt = GetFrameTime();
 
+		GameStateMachine(dt);
 
-		HandleInput(&player, dt);
+		//HandleInput(&player, dt);
 
-		for (int i = 0; i < Sheep_Count; i++)
-		{
-			UpdateSheep(&sheep[i], sheep, &player, dt);
-		}
+		
+		
+
+		printf("Sheep herded: %d/%d\n", TotalHerdedSheep, Sheep_Count);
 
 		DrawGame();
 
@@ -702,7 +878,7 @@ int main ()
 		//	printf("you won!");
 		}
 
-		printf("%f\n", TotalHerdedSheep);
+		//printf("%f\n", TotalHerdedSheep);
 	}
 	// Release loaded resources and close the window.
 	
