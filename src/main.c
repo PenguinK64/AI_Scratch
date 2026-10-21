@@ -126,12 +126,17 @@ typedef struct
 	float Spook_radius;
 
 	float Separation_radius;
+	float Alignment_radius;
+	float Cohesion_radius;
 
 	Vector2 wanderDirection;
 	float wanderTimer;
 	float wanderInterval;
 
 	SheepState currentState;
+
+	bool facingRight;
+	float facingTimer;
 
 	bool sheepherded;
 
@@ -194,7 +199,88 @@ Vector2 CalculateSeparation(Sheep* currentSheep, Sheep sheep[])
 }
 	
 
+Vector2 CalculateAlignment(Sheep* currentSheep, Sheep sheep[])
+{
+	Vector2 alignment = { 0.0f, 0.0f };
+	int neighbourCount = 0;
 
+	for (int i = 0; i < Sheep_Count; i++)
+	{
+		Sheep* otherSheep = &sheep[i];
+
+		if (otherSheep != currentSheep)
+		{
+			float distance = Vector2Distance(
+				currentSheep->position,
+				otherSheep->position
+			);
+
+			if (distance < currentSheep->Alignment_radius)
+			{
+				alignment.x += otherSheep->velocity.x;
+				alignment.y += otherSheep->velocity.y;
+
+				neighbourCount++;
+			}
+		}
+	}
+
+	if (neighbourCount == 0)
+	{
+		return alignment;
+	}
+
+	alignment.x /= neighbourCount;
+	alignment.y /= neighbourCount;
+
+	alignment = Vector2Normalize(alignment);
+
+	return alignment;
+}
+
+Vector2 CalculateCohesion(Sheep* currentSheep, Sheep sheep[])
+{
+	Vector2 cohesion = { 0.0f, 0.0f };
+	int neighbourCount = 0;
+
+	for (int i = 0; i < Sheep_Count; i++)
+	{
+		Sheep* otherSheep = &sheep[i];
+
+		if (otherSheep != currentSheep)
+		{
+			float distance = Vector2Distance(
+				currentSheep->position,
+				otherSheep->position
+			);
+
+			if (distance < currentSheep->Cohesion_radius)
+			{
+				cohesion.x += otherSheep->position.x;
+				cohesion.y += otherSheep->position.y;
+
+				neighbourCount++;
+			}
+		}
+	}
+
+	if (neighbourCount == 0)
+	{
+		return cohesion;
+	}
+
+	// Calculate average neighbour position
+	cohesion.x /= neighbourCount;
+	cohesion.y /= neighbourCount;
+
+	// Find direction towards that position
+	cohesion.x -= currentSheep->position.x;
+	cohesion.y -= currentSheep->position.y;
+
+	cohesion = Vector2Normalize(cohesion);
+
+	return cohesion;
+}
 
 
 void UpdateSheep(Sheep* s, Sheep sheep[], Player* p, float dt) 
@@ -212,7 +298,8 @@ void UpdateSheep(Sheep* s, Sheep sheep[], Player* p, float dt)
 	float distance = Vector2Length(difference);
 
 	Vector2 separation = CalculateSeparation(s, sheep);
-
+	Vector2 alignment = CalculateAlignment(s, sheep);
+	Vector2 cohesion = CalculateCohesion(s, sheep);
 	
 	switch (s->currentState)
 	{
@@ -253,11 +340,21 @@ void UpdateSheep(Sheep* s, Sheep sheep[], Player* p, float dt)
 			s->velocity = Vector2Scale(s->wanderDirection, wanderSpeed);
 			
 			// Separation
-			float separationWeight = 100.0f;
+			float separationWeight = 30.0f;
 			s->velocity.x += separation.x * separationWeight;
 			s->velocity.y += separation.y * separationWeight;
 
+			// Alignment
+			float alignmentWeight = 20.0f;
 
+			s->velocity.x += alignment.x * alignmentWeight;
+			s->velocity.y += alignment.y * alignmentWeight;
+
+			// Cohesion
+			float cohesionWeight = 15.0f;
+
+			s->velocity.x += cohesion.x * cohesionWeight;
+			s->velocity.y += cohesion.y * cohesionWeight;
 
 			if (distance < s->Spook_radius)
 			{
@@ -339,10 +436,25 @@ void UpdateSheep(Sheep* s, Sheep sheep[], Player* p, float dt)
 	}
 
 	
-	
+	//checking if the sheep is inside the win condition collision
 	s->sheepherded = CheckCollisionRecs(s->hitbox, WinHitbox);
 		
-	
+	//smoothing out the left/right texture swap
+	s->facingTimer -= dt;
+
+	if (s->facingTimer <= 0.0f)
+	{
+		if (s->velocity.x > 15.0f && !s->facingRight)
+		{
+			s->facingRight = true;
+			s->facingTimer = 0.2f;
+		}
+		else if (s->velocity.x < -15.0f && s->facingRight)
+		{
+			s->facingRight = false;
+			s->facingTimer = 0.2f;
+		}
+	}
 
 }
 
@@ -429,6 +541,8 @@ void InitialiseSheep(Sheep* s)
 	s->Spook_radius = 150;
 
 	s->Separation_radius = 100.f;
+	s->Alignment_radius = 200.0f;
+	s->Cohesion_radius = 400.0f;
 
 	s->sheepherded = false;
 
@@ -437,6 +551,9 @@ void InitialiseSheep(Sheep* s)
 	s->wanderInterval = GetRandomValue(1, 4);
 	
 	s->currentState = SHEEP_CALM;
+
+	s->facingRight = true;
+	s->facingTimer = 0.0f;
 
 	s->hitbox = (Rectangle)
 	{
@@ -738,14 +855,14 @@ void DrawSheep(Sheep* s)
 
 	if (s->textureVariation == 0)
 	{
-		if (s->velocity.x < 0)
+		if (!s->facingRight)
 			sheepTexture = sheep1Left;
 		else
 			sheepTexture = sheep1Right;
 	}
 	else
 	{
-		if (s->velocity.x < 0)
+		if (!s->facingRight)
 			sheepTexture = sheep2Left;
 		else
 			sheepTexture = sheep2Right;
@@ -792,13 +909,6 @@ void DrawGame()
 	DrawTextureEx(GrassTexture1, grass1Pos, 0, 1, WHITE);
 	DrawTextureEx(GrassTexture2, grass2Pos, 0, 1, WHITE);
 	DrawTextureEx(WinFenceTexture, grass1Pos, 0, 1, WHITE);
-	
-
-//	DrawRectangleLinesEx(WinFenceBottom, 2.0f, RED);
-	//DrawRectangleLinesEx(WinFenceRight, 2.0f, RED);
-	//DrawRectangleLinesEx(WinHitbox, 2.0f, RED);
-
-//	DrawRectangleLinesEx(rightFence, 2.0f, RED);
 
 	DrawPlayer(&player);
 
